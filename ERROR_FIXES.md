@@ -108,3 +108,9 @@ Added the GL Account value for all three rows to maintain data consistency.
 2. Test with worksheets containing large amounts of data (1000+ rows)
 3. Verify Summary sheet output contains complete GL Account information for all row types
 4. Verify GL sheets are created correctly with proper Profit Center blocks
+
+## Notes
+
+- The script assumes that the GL_Mapping sheet in Personal.xlsb exists and has proper structure (headers in row 1)
+- The script creates headers for new GL sheets automatically, so they will never be completely empty
+- All fixes maintain the existing assumptions and error handling patterns of the original script
