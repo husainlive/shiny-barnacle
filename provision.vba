@@ -1,0 +1,270 @@
+Option Explicit
+
+Public Sub BuildProvisionReports()
+    Dim wb As Workbook
+    Dim wsData As Worksheet
+    Dim wsMapping As Worksheet
+    Dim dictGL As Object, dictData As Object
+    Dim dictMonthsGlobal As Object
+    Dim GLCode As String, GLDesc As String
+    Dim PC As String, PCDesc As String
+    Dim PostingKey As String
+    Dim Amount As Double
+    Dim DocDate As Date, MonthKey As String
+    Dim r As Long, lastRow As Long
+    
+    Set wb = ActiveWorkbook
+    Set wsData = ActiveSheet
+    
+    ' --- GL Mapping in Personal.xlsb ---
+    On Error Resume Next
+    Set wsMapping = ThisWorkbook.Sheets("GL_Mapping")
+    If wsMapping Is Nothing Then
+        MsgBox "GL_Mapping sheet not found in Personal.xlsb.", vbCritical
+        Exit Sub
+    End If
+    On Error GoTo 0
+    
+    ' Load existing GL mapping
+    Set dictGL = CreateObject("Scripting.Dictionary")
+    Dim mapLastRow As Long
+    mapLastRow = wsMapping.Cells(wsMapping.Rows.Count, 1).End(xlUp).Row
+    For r = 2 To mapLastRow
+        GLCode = Trim(wsMapping.Cells(r, 1).Value)
+        GLDesc = wsMapping.Cells(r, 2).Value
+        If GLCode <> "" Then dictGL(GLCode) = GLDesc
+    Next r
+    
+    ' --- Prepare in-memory data dictionary ---
+    Set dictData = CreateObject("Scripting.Dictionary")
+    Set dictMonthsGlobal = CreateObject("Scripting.Dictionary")
+    
+    ' Map headers
+    Dim hdrMap As Object
+    Set hdrMap = CreateObject("Scripting.Dictionary")
+    Dim lastCol As Long, c As Long
+    lastCol = wsData.Cells(1, wsData.Columns.Count).End(xlToLeft).Column
+    For c = 1 To lastCol
+        hdrMap(LCase(Trim(wsData.Cells(1, c).Value))) = c
+    Next c
+    
+    Dim hDocDate As Long, hPCDesc As Long, hPC As Long, hPostingKey As Long, hAmount As Long, hOffset As Long
+    hDocDate = hdrMap("document date")
+    hPCDesc = hdrMap("profit center: short text")
+    hPC = hdrMap("profit center")
+    hPostingKey = hdrMap("posting key")
+    hAmount = hdrMap("company code currency value")
+    hOffset = hdrMap("offsetting account")
+    
+    If hDocDate = 0 Or hPCDesc = 0 Or hPC = 0 Or hPostingKey = 0 Or hAmount = 0 Or hOffset = 0 Then
+        MsgBox "One or more required headers not found.", vbCritical
+        Exit Sub
+    End If
+    
+    ' --- Collect unique months & read data into dictionary ---
+    lastRow = wsData.Cells(wsData.Rows.Count, hDocDate).End(xlUp).Row
+    Dim key As Variant
+    Dim tmpGLDesc As String, tmpPC As String, tmpPCDesc As String
+    Dim tmpPostingKey As String, tmpAmount As Double
+    Dim tmpDocDate As Date, tmpMonthKey As String
+    Dim newGLDesc As String
+    
+    For r = 2 To lastRow
+        If Not IsDate(wsData.Cells(r, hDocDate).Value) Then GoTo NextRow
+        tmpDocDate = wsData.Cells(r, hDocDate).Value
+        tmpMonthKey = Format(tmpDocDate, "mm-yyyy")
+        dictMonthsGlobal(tmpMonthKey) = 1
+        
+        GLCode = Trim(wsData.Cells(r, hOffset).Value)
+        If GLCode = "" Then GoTo NextRow
+        
+        tmpPC = wsData.Cells(r, hPC).Value
+        tmpPCDesc = wsData.Cells(r, hPCDesc).Value
+        tmpPostingKey = wsData.Cells(r, hPostingKey).Value
+        tmpAmount = wsData.Cells(r, hAmount).Value
+        
+        ' Adjust Amount by PostingKey
+        Select Case tmpPostingKey
+            Case "50": tmpAmount = Abs(tmpAmount)
+            Case "40": tmpAmount = -Abs(tmpAmount)
+            Case Else: GoTo NextRow
+        End Select
+        
+        ' Get GL Description, prompt only if truly new
+        If dictGL.exists(GLCode) Then
+            tmpGLDesc = dictGL(GLCode)
+        Else
+            newGLDesc = InputBox("Enter description for new GL Code: " & GLCode, "New GL Code")
+            If newGLDesc = "" Then newGLDesc = GLCode
+            dictGL(GLCode) = newGLDesc
+            wsMapping.Cells(wsMapping.Rows.Count, 1).End(xlUp).Offset(1, 0).Value = GLCode
+            wsMapping.Cells(wsMapping.Rows.Count, 2).End(xlUp).Offset(1, 0).Value = newGLDesc
+            tmpGLDesc = newGLDesc
+        End If
+        
+        ' Key = GLDesc | ProfitCenter
+        key = tmpGLDesc & "|" & tmpPC
+        If Not dictData.exists(key) Then
+            Set dictData(key) = CreateObject("Scripting.Dictionary")
+        End If
+        
+        ' Sum amounts per month
+        If dictData(key).exists(tmpMonthKey) Then
+            dictData(key)(tmpMonthKey) = dictData(key)(tmpMonthKey) + tmpAmount
+        Else
+            dictData(key)(tmpMonthKey) = tmpAmount
+        End If
+        
+NextRow:
+    Next r
+    
+    ' --- Create GL sheets & write 3-row blocks ---
+    Dim wsGL As Worksheet, pcRowPosted As Long, pcRowReversed As Long, pcRowBalance As Long
+    Dim dictSheetMonths As Object
+    Set dictSheetMonths = CreateObject("Scripting.Dictionary")
+    
+    Dim parts() As String
+    Dim month As Variant, colNum As Long
+    Dim monthsDict As Object
+    Dim monthList As Variant
+    Dim m As Variant
+    
+    For Each key In dictData.Keys
+        parts = Split(key, "|")
+        tmpGLDesc = parts(0)
+        tmpPC = parts(1)
+        
+        ' Create or activate GL sheet
+        On Error Resume Next
+        Set wsGL = wb.Sheets(tmpGLDesc)
+        If wsGL Is Nothing Then
+            Set wsGL = wb.Sheets.Add
+            wsGL.Name = tmpGLDesc
+            wsGL.Range("A1").Value = "Profit Center"
+            wsGL.Range("B1").Value = "Type"
+        End If
+        On Error GoTo 0
+        
+        ' Find or add Profit Center 3-row block
+        pcRowPosted = 0
+        Dim foundRow As Range
+        For Each foundRow In wsGL.Range("A:A")
+            If foundRow.Value = tmpPC Then
+                pcRowPosted = foundRow.Row
+                Exit For
+            End If
+        Next foundRow
+        If pcRowPosted = 0 Then
+            pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
+            If pcRowPosted < 2 Then pcRowPosted = 2
+            wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+            wsGL.Cells(pcRowPosted, 2).Value = "Posted"
+            wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"
+            wsGL.Cells(pcRowPosted + 2, 2).Value = "Balance"
+        End If
+        pcRowReversed = pcRowPosted + 1
+        pcRowBalance = pcRowPosted + 2
+        
+        ' Build month columns for sheet
+        If Not dictSheetMonths.exists(tmpGLDesc) Then
+            Set monthsDict = CreateObject("Scripting.Dictionary")
+            monthList = dictMonthsGlobal.Keys
+            ' Sort months chronologically
+            QuickSortMonths monthList, LBound(monthList), UBound(monthList)
+            colNum = 3
+            For Each m In monthList
+                wsGL.Cells(1, colNum).Value = m
+                monthsDict(m) = colNum
+                colNum = colNum + 1
+            Next m
+            Set dictSheetMonths(tmpGLDesc) = monthsDict
+        End If
+        
+        Set monthsDict = dictSheetMonths(tmpGLDesc)
+        
+        ' Fill Posted/Reversed/Balance
+        For Each month In dictData(key).Keys
+            colNum = monthsDict(month)
+            If dictData(key)(month) > 0 Then
+                wsGL.Cells(pcRowPosted, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + dictData(key)(month)
+            Else
+                wsGL.Cells(pcRowReversed, colNum).Value = Nz(wsGL.Cells(pcRowReversed, colNum).Value) + dictData(key)(month)
+            End If
+            wsGL.Cells(pcRowBalance, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + Nz(wsGL.Cells(pcRowReversed, colNum).Value)
+        Next month
+    Next key
+    
+    ' --- Build Summary Sheet ---
+    Dim wsSummary As Worksheet
+    On Error Resume Next
+    Set wsSummary = wb.Sheets("Summary")
+    If wsSummary Is Nothing Then
+        Set wsSummary = wb.Sheets.Add
+        wsSummary.Name = "Summary"
+    Else
+        wsSummary.Cells.Clear
+    End If
+    On Error GoTo 0
+    
+    wsSummary.Cells(1, 1).Value = "GL Account"
+    wsSummary.Cells(1, 2).Value = "Profit Center"
+    wsSummary.Cells(1, 3).Value = "Type"
+    
+    colNum = 4
+    For Each month In dictMonthsGlobal.Keys
+        wsSummary.Cells(1, colNum).Value = month
+        colNum = colNum + 1
+    Next month
+    
+    Dim rowOut As Long: rowOut = 2
+    For Each key In dictData.Keys
+        parts = Split(key, "|")
+        tmpGLDesc = parts(0)
+        tmpPC = parts(1)
+        
+        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
+        wsSummary.Cells(rowOut, 2).Value = tmpPC
+        wsSummary.Cells(rowOut, 3).Value = "Posted"
+        rowOut = rowOut + 1
+        wsSummary.Cells(rowOut, 2).Value = tmpPC
+        wsSummary.Cells(rowOut, 3).Value = "Reversed"
+        rowOut = rowOut + 1
+        wsSummary.Cells(rowOut, 2).Value = tmpPC
+        wsSummary.Cells(rowOut, 3).Value = "Balance"
+        rowOut = rowOut + 1
+    Next key
+    
+    MsgBox "Provision GL processing completed."
+    
+End Sub
+
+' --- Helper function to sort month strings chronologically (mm-yyyy) ---
+Sub QuickSortMonths(arr As Variant, ByVal first As Long, ByVal last As Long)
+    Dim i As Long, j As Long
+    Dim pivot As String, temp As String
+    i = first
+    j = last
+    pivot = arr((first + last) \ 2)
+    Do While i <= j
+        Do While CDate("01-" & arr(i)) < CDate("01-" & pivot): i = i + 1: Loop
+        Do While CDate("01-" & arr(j)) > CDate("01-" & pivot): j = j - 1: Loop
+        If i <= j Then
+            temp = arr(i)
+            arr(i) = arr(j)
+            arr(j) = temp
+            i = i + 1
+            j = j - 1
+        End If
+    Loop
+    If first < j Then QuickSortMonths arr, first, j
+    If i < last Then QuickSortMonths arr, i, last
+End Sub
+
+' --- Nz helper ---
+Function Nz(val As Variant) As Double
+    If IsEmpty(val) Or IsNull(val) Or val = "" Then
+        Nz = 0
+    Else
+        Nz = val
+    End If
+End Function
