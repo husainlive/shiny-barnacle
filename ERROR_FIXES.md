@@ -96,11 +96,45 @@ Added the GL Account value for all three rows to maintain data consistency.
 
 ---
 
+### 4. **Missing Type Labels for Existing Profit Centers (Lines 166-168)**
+
+**Problem:**
+```vba
+If pcRowPosted = 0 Then
+    pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
+    If pcRowPosted < 2 Then pcRowPosted = 2
+    wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+    wsGL.Cells(pcRowPosted, 2).Value = "Posted"
+    wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"
+    wsGL.Cells(pcRowPosted + 2, 2).Value = "Balance"
+End If
+```
+
+The code only sets the Type labels ("Posted", "Reversed", "Balance") when creating a NEW Profit Center block. When an existing Profit Center is found, these labels are not refreshed or verified, which can lead to incomplete output where only the "Posted" row appears, and the "Reversed" and "Balance" rows are missing their labels.
+
+**Fix:**
+```vba
+If pcRowPosted = 0 Then
+    pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
+    If pcRowPosted < 2 Then pcRowPosted = 2
+    wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+End If
+' Always ensure the Type labels are set for all 3 rows
+wsGL.Cells(pcRowPosted, 2).Value = "Posted"
+wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"
+wsGL.Cells(pcRowPosted + 2, 2).Value = "Balance"
+```
+
+Move the Type label assignment outside the `If pcRowPosted = 0` block to ensure that all three rows (Posted, Reversed, Balance) are properly labeled for both new and existing Profit Centers. This ensures the complete 3-row structure is always present in the output.
+
+---
+
 ## Impact
 
-1. **Data Integrity:** Fix #1 and #3 ensure data is written correctly and completely
+1. **Data Integrity:** Fix #1, #3, and #4 ensure data is written correctly and completely
 2. **Performance:** Fix #2 can reduce execution time from minutes to seconds for large datasets
 3. **Reliability:** All fixes improve the overall reliability and correctness of the script
+4. **Output Completeness:** Fix #4 ensures that all three rows (Posted, Reversed, Balance) are properly displayed for each Profit Center, matching the expected output format
 
 ## Testing Recommendations
 
