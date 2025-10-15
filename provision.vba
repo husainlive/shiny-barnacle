@@ -315,12 +315,10 @@ NextRow:
                 
                 ' Write values to source GL sheet columns (hyperlinks removed)
                 If totalPostedVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glPostedCol).Value = totalPostedVal
                     AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, glAccount, totalPostedVal
                 End If
                 
                 If totalReversedVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glReversedCol).Value = totalReversedVal
                     AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, glAccount, totalReversedVal
                 End If
                 
@@ -328,7 +326,6 @@ NextRow:
                 Dim balanceVal As Double
                 balanceVal = totalPostedVal + totalReversedVal
                 If balanceVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glBalanceCol).Value = balanceVal
                     AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, glAccount, balanceVal
                 End If
             End If
