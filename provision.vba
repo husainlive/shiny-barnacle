@@ -285,16 +285,16 @@ NextRow:
     
     Dim summaryRow As Long
     summaryRow = 2
-    Dim pc As Variant
+    Dim profitCenter As Variant
     Dim glPostedCol As Long, glReversedCol As Long, glBalanceCol As Long
     Dim totalPostedVal As Double, totalReversedVal As Double
     
-    For Each pc In pcArray
-        wsSummary.Cells(summaryRow, 1).Value = pc
+    For Each profitCenter In pcArray
+        wsSummary.Cells(summaryRow, 1).Value = profitCenter
         
         ' For each GL Account, calculate aggregated Posted, Reversed, Balance
         For Each glAccount In glArray
-            key = glAccount & "|" & pc
+            key = glAccount & "|" & profitCenter
             
             If dictData.exists(key) Then
                 totalPostedVal = 0
@@ -313,29 +313,27 @@ NextRow:
                 glReversedCol = dictGLColumns(glAccount)("Reversed")
                 glBalanceCol = dictGLColumns(glAccount)("Balance")
                 
-                ' Write values with hyperlinks to source GL sheet
+                ' Write values to Summary sheet (hyperlinks removed)
+                ' glAccount parameter is the GL sheet name, kept for potential future formula reference use
                 If totalPostedVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glPostedCol).Value = totalPostedVal
-                    AddHyperlinkToCell wsSummary, summaryRow, glPostedCol, glAccount, totalPostedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, glAccount, totalPostedVal
                 End If
                 
                 If totalReversedVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glReversedCol).Value = totalReversedVal
-                    AddHyperlinkToCell wsSummary, summaryRow, glReversedCol, glAccount, totalReversedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, glAccount, totalReversedVal
                 End If
                 
                 ' Balance = Posted + Reversed
                 Dim balanceVal As Double
                 balanceVal = totalPostedVal + totalReversedVal
                 If balanceVal <> 0 Then
-                    wsSummary.Cells(summaryRow, glBalanceCol).Value = balanceVal
-                    AddHyperlinkToCell wsSummary, summaryRow, glBalanceCol, glAccount, balanceVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, glAccount, balanceVal
                 End If
             End If
         Next glAccount
         
         summaryRow = summaryRow + 1
-    Next pc
+    Next profitCenter
     
     MsgBox "Provision GL processing completed."
     
@@ -394,12 +392,16 @@ Function Nz(val As Variant) As Double
     End If
 End Function
 
-' --- Helper to add hyperlink to a cell ---
-Sub AddHyperlinkToCell(ws As Worksheet, cellRow As Long, cellCol As Long, sheetName As String, displayValue As Variant)
+' --- Helper to set cell values without hyperlinks ---
+Sub AddCellReferenceFormula(ws As Worksheet, cellRow As Long, cellCol As Long, sheetName As String, displayValue As Variant)
+    ' This function sets simple cell values without hyperlinks
+    ' The sheetName parameter (which receives the GL Account/Sheet name) is kept for API compatibility
+    ' It could be used in the future if formula references like =SheetName!B1 are desired
+    ' For now, it's unused - users can manually adjust cells to add formula references as needed
     On Error Resume Next
-    ws.Hyperlinks.Add Anchor:=ws.Cells(cellRow, cellCol), _
-        Address:="", _
-        SubAddress:="'" & sheetName & "'!A1", _
-        TextToDisplay:=displayValue
+    ' Remove any existing hyperlink from this specific cell only
+    ws.Cells(cellRow, cellCol).Hyperlinks.Delete
+    ' Set the value (not a formula) - hyperlinks are removed
+    ws.Cells(cellRow, cellCol).Value = displayValue
     On Error GoTo 0
 End Sub
