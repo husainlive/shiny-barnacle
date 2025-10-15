@@ -123,15 +123,14 @@ Next month
 
 ## Files Modified
 
-1. **provision.vba** (lines 224-272):
-   - Added `sortedMonths` variable declaration (line 229)
-   - Added sorting of months before creating headers (lines 230-231)
+1. **provision.vba** (lines 228-237 and 260-272):
+   - Added `sortedMonths` variable declaration and initialization (lines 229-231)
    - Changed header loop to use `sortedMonths` instead of `dictMonthsGlobal.Keys` (line 234)
-   - Changed data population loop to use `sortedMonths` (line 262)
+   - Updated comment and changed data population loop to use `sortedMonths` (lines 260 and 262)
 
 ## Technical Details
 
-The `QuickSortMonths` function (lines 278-298) sorts month strings in "mm-yyyy" format chronologically by:
+The `QuickSortMonths` function (lines 284-303) sorts month strings in "mm-yyyy" format chronologically by:
 1. Converting each month string to a date using `CDate("01-" & arr(i))`
 2. Comparing dates to establish chronological order
 3. Using quicksort algorithm for efficient sorting
