@@ -51,11 +51,11 @@ End Sub
 ```vba
 Sub AddCellReferenceFormula(ws As Worksheet, cellRow As Long, cellCol As Long, sheetName As String, displayValue As Variant)
     ' This function sets simple cell values without hyperlinks
-    ' The function name references "formula" as a placeholder for future enhancement
+    ' The sheetName parameter is kept for API compatibility but not currently used
     ' Users can manually adjust cells to add formula references like =SheetName!B1 as needed
     On Error Resume Next
-    ' Remove any existing hyperlink first
-    ws.Hyperlinks.Delete
+    ' Remove any existing hyperlink from this specific cell only
+    ws.Cells(cellRow, cellCol).Hyperlinks.Delete
     ' Set the value (not a formula) - hyperlinks are removed
     ws.Cells(cellRow, cellCol).Value = displayValue
     On Error GoTo 0
