@@ -191,21 +191,37 @@ NextRow:
                 monthsDict(m) = colNum
                 colNum = colNum + 1
             Next m
+            ' Add Total column at the end
+            wsGL.Cells(1, colNum).Value = "Total"
+            monthsDict("Total") = colNum
             Set dictSheetMonths(tmpGLDesc) = monthsDict
         End If
         
         Set monthsDict = dictSheetMonths(tmpGLDesc)
         
-        ' Fill Posted/Reversed/Balance
+        ' Fill Posted/Reversed/Balance and track totals
+        Dim totalPosted As Double, totalReversed As Double
+        totalPosted = 0
+        totalReversed = 0
+        
         For Each month In dictData(key).Keys
             colNum = monthsDict(month)
             If dictData(key)(month) > 0 Then
                 wsGL.Cells(pcRowPosted, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + dictData(key)(month)
+                totalPosted = totalPosted + dictData(key)(month)
             Else
                 wsGL.Cells(pcRowReversed, colNum).Value = Nz(wsGL.Cells(pcRowReversed, colNum).Value) + dictData(key)(month)
+                totalReversed = totalReversed + dictData(key)(month)
             End If
             wsGL.Cells(pcRowBalance, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + Nz(wsGL.Cells(pcRowReversed, colNum).Value)
         Next month
+        
+        ' Fill Total column
+        Dim totalColNum As Long
+        totalColNum = monthsDict("Total")
+        wsGL.Cells(pcRowPosted, totalColNum).Value = Nz(wsGL.Cells(pcRowPosted, totalColNum).Value) + totalPosted
+        wsGL.Cells(pcRowReversed, totalColNum).Value = Nz(wsGL.Cells(pcRowReversed, totalColNum).Value) + totalReversed
+        wsGL.Cells(pcRowBalance, totalColNum).Value = Nz(wsGL.Cells(pcRowPosted, totalColNum).Value) + Nz(wsGL.Cells(pcRowReversed, totalColNum).Value)
     Next key
     
     ' --- Build Summary Sheet ---
@@ -235,6 +251,10 @@ NextRow:
         wsSummary.Cells(1, colNum).Value = month
         colNum = colNum + 1
     Next month
+    ' Add Total column
+    wsSummary.Cells(1, colNum).Value = "Total"
+    Dim totalColIdx As Long
+    totalColIdx = colNum
     
     Dim rowOut As Long: rowOut = 2
     Dim rowPosted As Long, rowReversed As Long, rowBalance As Long
@@ -257,19 +277,30 @@ NextRow:
         wsSummary.Cells(rowBalance, 2).Value = tmpPC
         wsSummary.Cells(rowBalance, 3).Value = "Balance"
         
-        ' Fill in the month data using sorted months
+        ' Fill in the month data using sorted months and track totals
+        Dim sumPosted As Double, sumReversed As Double
+        sumPosted = 0
+        sumReversed = 0
+        
         colNum = 4
         For Each month In sortedMonths
             If dictData(key).exists(month) Then
                 If dictData(key)(month) > 0 Then
                     wsSummary.Cells(rowPosted, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + dictData(key)(month)
+                    sumPosted = sumPosted + dictData(key)(month)
                 Else
                     wsSummary.Cells(rowReversed, colNum).Value = Nz(wsSummary.Cells(rowReversed, colNum).Value) + dictData(key)(month)
+                    sumReversed = sumReversed + dictData(key)(month)
                 End If
                 wsSummary.Cells(rowBalance, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + Nz(wsSummary.Cells(rowReversed, colNum).Value)
             End If
             colNum = colNum + 1
         Next month
+        
+        ' Fill Total column
+        wsSummary.Cells(rowPosted, totalColIdx).Value = Nz(wsSummary.Cells(rowPosted, totalColIdx).Value) + sumPosted
+        wsSummary.Cells(rowReversed, totalColIdx).Value = Nz(wsSummary.Cells(rowReversed, totalColIdx).Value) + sumReversed
+        wsSummary.Cells(rowBalance, totalColIdx).Value = Nz(wsSummary.Cells(rowPosted, totalColIdx).Value) + Nz(wsSummary.Cells(rowReversed, totalColIdx).Value)
         
         rowOut = rowOut + 3
         ' Add blank row after each profit center group
