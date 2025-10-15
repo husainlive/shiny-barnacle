@@ -97,8 +97,10 @@ Public Sub BuildProvisionReports()
             newGLDesc = InputBox("Enter description for new GL Code: " & GLCode, "New GL Code")
             If newGLDesc = "" Then newGLDesc = GLCode
             dictGL(GLCode) = newGLDesc
-            wsMapping.Cells(wsMapping.Rows.Count, 1).End(xlUp).Offset(1, 0).Value = GLCode
-            wsMapping.Cells(wsMapping.Rows.Count, 2).End(xlUp).Offset(1, 0).Value = newGLDesc
+            Dim newRow As Long
+            newRow = wsMapping.Cells(wsMapping.Rows.Count, 1).End(xlUp).Row + 1
+            wsMapping.Cells(newRow, 1).Value = GLCode
+            wsMapping.Cells(newRow, 2).Value = newGLDesc
             tmpGLDesc = newGLDesc
         End If
         
@@ -147,10 +149,13 @@ NextRow:
         
         ' Find or add Profit Center 3-row block
         pcRowPosted = 0
-        Dim foundRow As Range
-        For Each foundRow In wsGL.Range("A:A")
-            If foundRow.Value = tmpPC Then
-                pcRowPosted = foundRow.Row
+        Dim foundRow As Long
+        Dim lastUsedRow As Long
+        lastUsedRow = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row
+        If lastUsedRow < 1 Then lastUsedRow = 1
+        For foundRow = 2 To lastUsedRow
+            If wsGL.Cells(foundRow, 1).Value = tmpPC Then
+                pcRowPosted = foundRow
                 Exit For
             End If
         Next foundRow
@@ -226,9 +231,11 @@ NextRow:
         wsSummary.Cells(rowOut, 2).Value = tmpPC
         wsSummary.Cells(rowOut, 3).Value = "Posted"
         rowOut = rowOut + 1
+        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
         wsSummary.Cells(rowOut, 2).Value = tmpPC
         wsSummary.Cells(rowOut, 3).Value = "Reversed"
         rowOut = rowOut + 1
+        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
         wsSummary.Cells(rowOut, 2).Value = tmpPC
         wsSummary.Cells(rowOut, 3).Value = "Balance"
         rowOut = rowOut + 1
