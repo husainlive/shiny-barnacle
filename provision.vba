@@ -237,75 +237,119 @@ NextRow:
     End If
     On Error GoTo 0
     
-    wsSummary.Cells(1, 1).Value = "GL Account"
-    wsSummary.Cells(1, 2).Value = "Profit Center"
-    wsSummary.Cells(1, 3).Value = "Type"
+    ' Build unique lists of GL Accounts and Profit Centers
+    Dim dictGLAccounts As Object, dictProfitCenters As Object
+    Set dictGLAccounts = CreateObject("Scripting.Dictionary")
+    Set dictProfitCenters = CreateObject("Scripting.Dictionary")
     
-    ' Sort months chronologically for Summary sheet
-    Dim sortedMonths As Variant
-    sortedMonths = dictMonthsGlobal.Keys
-    QuickSortMonths sortedMonths, LBound(sortedMonths), UBound(sortedMonths)
-    
-    colNum = 4
-    For Each month In sortedMonths
-        wsSummary.Cells(1, colNum).Value = month
-        colNum = colNum + 1
-    Next month
-    ' Add Total column
-    wsSummary.Cells(1, colNum).Value = "Total"
-    Dim totalColIdx As Long
-    totalColIdx = colNum
-    
-    Dim rowOut As Long: rowOut = 2
-    Dim rowPosted As Long, rowReversed As Long, rowBalance As Long
     For Each key In dictData.Keys
         parts = Split(key, "|")
         tmpGLDesc = parts(0)
         tmpPC = parts(1)
-        
-        rowPosted = rowOut
-        rowReversed = rowOut + 1
-        rowBalance = rowOut + 2
-        
-        wsSummary.Cells(rowPosted, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowPosted, 2).Value = tmpPC
-        wsSummary.Cells(rowPosted, 3).Value = "Posted"
-        wsSummary.Cells(rowReversed, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowReversed, 2).Value = tmpPC
-        wsSummary.Cells(rowReversed, 3).Value = "Reversed"
-        wsSummary.Cells(rowBalance, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowBalance, 2).Value = tmpPC
-        wsSummary.Cells(rowBalance, 3).Value = "Balance"
-        
-        ' Fill in the month data using sorted months and track totals
-        Dim sumPosted As Double, sumReversed As Double
-        sumPosted = 0
-        sumReversed = 0
-        
-        colNum = 4
-        For Each month In sortedMonths
-            If dictData(key).exists(month) Then
-                If dictData(key)(month) > 0 Then
-                    wsSummary.Cells(rowPosted, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + dictData(key)(month)
-                    sumPosted = sumPosted + dictData(key)(month)
-                Else
-                    wsSummary.Cells(rowReversed, colNum).Value = Nz(wsSummary.Cells(rowReversed, colNum).Value) + dictData(key)(month)
-                    sumReversed = sumReversed + dictData(key)(month)
-                End If
-                wsSummary.Cells(rowBalance, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + Nz(wsSummary.Cells(rowReversed, colNum).Value)
-            End If
-            colNum = colNum + 1
-        Next month
-        
-        ' Fill Total column
-        wsSummary.Cells(rowPosted, totalColIdx).Value = Nz(wsSummary.Cells(rowPosted, totalColIdx).Value) + sumPosted
-        wsSummary.Cells(rowReversed, totalColIdx).Value = Nz(wsSummary.Cells(rowReversed, totalColIdx).Value) + sumReversed
-        wsSummary.Cells(rowBalance, totalColIdx).Value = Nz(wsSummary.Cells(rowPosted, totalColIdx).Value) + Nz(wsSummary.Cells(rowReversed, totalColIdx).Value)
-        
-        rowOut = rowOut + 3
-        ' Add blank row after each profit center group
-        rowOut = rowOut + 1
+        dictGLAccounts(tmpGLDesc) = 1
+        dictProfitCenters(tmpPC) = 1
     Next key
+    
+    ' Sort GL Accounts alphabetically
+    Dim glArray As Variant
+    glArray = dictGLAccounts.Keys
+    QuickSortStrings glArray, LBound(glArray), UBound(glArray)
+    
+    ' Build header row: Profit Center | GL1-Posted | GL1-Reversed | GL1-Balance | GL2-Posted | ...
+    wsSummary.Cells(1, 1).Value = "Profit Center"
+    colNum = 2
+    Dim glAccount As Variant
+    Dim dictGLColumns As Object
+    Set dictGLColumns = CreateObject("Scripting.Dictionary")
+    
+    For Each glAccount In glArray
+        wsSummary.Cells(1, colNum).Value = glAccount & " - Posted"
+        wsSummary.Cells(1, colNum + 1).Value = glAccount & " - Reversed"
+        wsSummary.Cells(1, colNum + 2).Value = glAccount & " - Balance"
+        ' Store column positions for each GL Account
+        Set dictGLColumns(glAccount) = CreateObject("Scripting.Dictionary")
+        dictGLColumns(glAccount)("Posted") = colNum
+        dictGLColumns(glAccount)("Reversed") = colNum + 1
+        dictGLColumns(glAccount)("Balance") = colNum + 2
+        colNum = colNum + 3
+    Next glAccount
+    
+    ' Build data rows - one row per Profit Center
+    Dim pcArray As Variant
+    pcArray = dictProfitCenters.Keys
+    QuickSortStrings pcArray, LBound(pcArray), UBound(pcArray)
+    
+    Dim summaryRow As Long
+    summaryRow = 2
+    Dim pc As Variant
+    Dim glPostedCol As Long, glReversedCol As Long, glBalanceCol As Long
+    Dim totalPostedVal As Double, totalReversedVal As Double
+    
+    For Each pc In pcArray
+        wsSummary.Cells(summaryRow, 1).Value = pc
+        
+        ' For each GL Account, calculate aggregated Posted, Reversed, Balance
+        For Each glAccount In glArray
+            key = glAccount & "|" & pc
+            
+            If dictData.exists(key) Then
+                totalPostedVal = 0
+                totalReversedVal = 0
+                
+                ' Sum all months for this GL+PC combination
+                For Each month In dictData(key).Keys
+                    If dictData(key)(month) > 0 Then
+                        totalPostedVal = totalPostedVal + dictData(key)(month)
+                    Else
+                        totalReversedVal = totalReversedVal + dictData(key)(month)
+                    End If
+                Next month
+                
+                glPostedCol = dictGLColumns(glAccount)("Posted")
+                glReversedCol = dictGLColumns(glAccount)("Reversed")
+                glBalanceCol = dictGLColumns(glAccount)("Balance")
+                
+                ' Write values with hyperlinks to source GL sheet
+                If totalPostedVal <> 0 Then
+                    wsSummary.Cells(summaryRow, glPostedCol).Value = totalPostedVal
+                    ' Add hyperlink to GL sheet
+                    On Error Resume Next
+                    wsSummary.Hyperlinks.Add Anchor:=wsSummary.Cells(summaryRow, glPostedCol), _
+                        Address:="", _
+                        SubAddress:="'" & glAccount & "'!A1", _
+                        TextToDisplay:=totalPostedVal
+                    On Error GoTo 0
+                End If
+                
+                If totalReversedVal <> 0 Then
+                    wsSummary.Cells(summaryRow, glReversedCol).Value = totalReversedVal
+                    ' Add hyperlink to GL sheet
+                    On Error Resume Next
+                    wsSummary.Hyperlinks.Add Anchor:=wsSummary.Cells(summaryRow, glReversedCol), _
+                        Address:="", _
+                        SubAddress:="'" & glAccount & "'!A1", _
+                        TextToDisplay:=totalReversedVal
+                    On Error GoTo 0
+                End If
+                
+                ' Balance = Posted + Reversed
+                Dim balanceVal As Double
+                balanceVal = totalPostedVal + totalReversedVal
+                If balanceVal <> 0 Then
+                    wsSummary.Cells(summaryRow, glBalanceCol).Value = balanceVal
+                    ' Add hyperlink to GL sheet
+                    On Error Resume Next
+                    wsSummary.Hyperlinks.Add Anchor:=wsSummary.Cells(summaryRow, glBalanceCol), _
+                        Address:="", _
+                        SubAddress:="'" & glAccount & "'!A1", _
+                        TextToDisplay:=balanceVal
+                    On Error GoTo 0
+                End If
+            End If
+        Next glAccount
+        
+        summaryRow = summaryRow + 1
+    Next pc
     
     MsgBox "Provision GL processing completed."
     
@@ -331,6 +375,28 @@ Sub QuickSortMonths(arr As Variant, ByVal first As Long, ByVal last As Long)
     Loop
     If first < j Then QuickSortMonths arr, first, j
     If i < last Then QuickSortMonths arr, i, last
+End Sub
+
+' --- Helper function to sort strings alphabetically ---
+Sub QuickSortStrings(arr As Variant, ByVal first As Long, ByVal last As Long)
+    Dim i As Long, j As Long
+    Dim pivot As String, temp As String
+    i = first
+    j = last
+    pivot = arr((first + last) \ 2)
+    Do While i <= j
+        Do While StrComp(arr(i), pivot, vbTextCompare) < 0: i = i + 1: Loop
+        Do While StrComp(arr(j), pivot, vbTextCompare) > 0: j = j - 1: Loop
+        If i <= j Then
+            temp = arr(i)
+            arr(i) = arr(j)
+            arr(j) = temp
+            i = i + 1
+            j = j - 1
+        End If
+    Loop
+    If first < j Then QuickSortStrings arr, first, j
+    If i < last Then QuickSortStrings arr, i, last
 End Sub
 
 ' --- Nz helper ---
