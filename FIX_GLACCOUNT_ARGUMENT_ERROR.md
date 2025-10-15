@@ -4,7 +4,7 @@
 
 The VBA script had several variable declaration and scope issues that could cause "Argument Error" or other runtime errors:
 
-1. **glAccount Variable Reuse**: The variable `glAccount` was declared once but used in two separate `For Each` loops (lines 267-277 and 296-333), causing potential scope confusion and argument errors.
+1. **glAccount Variable Reuse**: The variable `glAccount` was declared once but used in two separate `For Each` loops (lines 268-278 and 298-334), causing potential scope confusion and argument errors.
 
 2. **Variables Declared Inside Loops**: Several variables were declared inside loop structures, which is poor practice in VBA and can lead to:
    - Performance issues (redeclaration on each iteration)
