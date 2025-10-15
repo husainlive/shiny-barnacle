@@ -42,13 +42,15 @@ key: "Equipment|10120008"
 ### Data Rows:
 
 **Row 2 (PC: 10120001):**
-| 10120001 | 1000 | -500 | 500 | 5000 | | 5000 |
+| 10120001 | 1000 | -500 | 500 | 5000 | (empty) | 5000 |
 
 **Row 3 (PC: 10120003):**
-| 10120003 | 2000 | | 2000 | | | |
+| 10120003 | 2000 | (empty) | 2000 | (empty) | (empty) | (empty) |
 
 **Row 4 (PC: 10120008):**
 | 10120008 | 70000 | -75000 | -5000 | 2000 | -1000 | 1000 |
+
+Note: "(empty)" indicates cells that are left blank because the value is zero.
 
 ## Logic Verification
 
@@ -81,19 +83,19 @@ dictGLColumns:
 **For PC 10120001:**
 - Check "Equipment|10120001": EXISTS
   - Sum months: totalPosted = 5000, totalReversed = 0
-  - Write to columns: (2, 5000), (3, 0), (4, 5000)
-  - Hyperlinks created for non-zero values
+  - Write to columns: (2, 5000), (3, empty), (4, 5000)
+  - Hyperlinks created for non-zero values only
 - Check "Provisions|10120001": EXISTS
   - Sum months: totalPosted = 1000, totalReversed = -500
   - Write to columns: (5, 1000), (6, -500), (7, 500)
-  - Hyperlinks created
+  - Hyperlinks created for all non-zero values
 
 **For PC 10120003:**
 - Check "Equipment|10120003": NOT EXISTS (skip)
 - Check "Provisions|10120003": EXISTS
   - Sum months: totalPosted = 2000, totalReversed = 0
-  - Write to columns: (5, 2000), (6, 0), (7, 2000)
-  - Hyperlinks created for non-zero values
+  - Write to columns: (5, 2000), (6, empty), (7, 2000)
+  - Hyperlinks created for non-zero values only
 
 **For PC 10120008:**
 - Check "Equipment|10120008": EXISTS
