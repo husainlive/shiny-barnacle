@@ -50,10 +50,9 @@ End Sub
 **New Function:**
 ```vba
 Sub AddCellReferenceFormula(ws As Worksheet, cellRow As Long, cellCol As Long, sheetName As String, displayValue As Variant)
-    ' Create a simple formula reference to the sheet
-    ' This creates a formula like =SheetName!B1 
-    ' Note: Since we don't track the exact source cell, we reference A1
-    ' Users can adjust the cell reference as needed
+    ' This function sets simple cell values without hyperlinks
+    ' The function name references "formula" as a placeholder for future enhancement
+    ' Users can manually adjust cells to add formula references like =SheetName!B1 as needed
     On Error Resume Next
     ' Remove any existing hyperlink first
     ws.Hyperlinks.Delete
