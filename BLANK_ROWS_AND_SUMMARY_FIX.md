@@ -183,6 +183,6 @@ To verify the fixes work correctly:
 
 ## Related Issues
 
-This fix addresses the issues mentioned in the problem statement:
+This fix addresses the issues mentioned in the original problem statement:
 - "it seems not all the numbers getting pick" - Fixed by populating Summary sheet month data
-- "also leave blank raw inbetween profit cenders" - Fixed by adding blank rows in both GL sheets and Summary sheet
+- "also leave blank raw inbetween profit cenders" (blank rows between profit centers) - Fixed by adding blank rows in both GL sheets and Summary sheet
