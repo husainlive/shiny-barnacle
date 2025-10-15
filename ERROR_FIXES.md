@@ -129,12 +129,50 @@ Move the Type label assignment outside the `If pcRowPosted = 0` block to ensure 
 
 ---
 
+### 5. **Worksheet Object Not Reset Before Access with Error Handling (Lines 21, 141, 206)**
+
+**Problem:**
+```vba
+On Error Resume Next
+Set wsGL = wb.Sheets(tmpGLDesc)
+If wsGL Is Nothing Then
+    Set wsGL = wb.Sheets.Add
+    wsGL.Name = tmpGLDesc
+```
+
+When `On Error Resume Next` is active and you attempt to access a non-existent sheet with `Set wsGL = wb.Sheets(tmpGLDesc)`, VBA does not automatically set `wsGL` to `Nothing` on error. Instead, the object variable retains its previous value. This causes a critical bug where:
+- The first GL sheet is created successfully
+- When processing a second GL account, `wsGL` still points to the first sheet
+- The `If wsGL Is Nothing` check fails (because it's not Nothing)
+- Data for all GL accounts gets written to the same first sheet
+- No additional sheets are created
+
+**Fix:**
+```vba
+On Error Resume Next
+Set wsGL = Nothing
+Set wsGL = wb.Sheets(tmpGLDesc)
+If wsGL Is Nothing Then
+    Set wsGL = wb.Sheets.Add
+    wsGL.Name = tmpGLDesc
+```
+
+Explicitly set the worksheet object to `Nothing` before attempting to access it. This ensures that if the sheet doesn't exist, the object variable will remain `Nothing`, allowing the subsequent check to work correctly and create new sheets as needed.
+
+This fix was applied to three locations:
+- Line 21: `wsMapping` for GL_Mapping sheet
+- Line 142: `wsGL` for individual GL account sheets (main bug fix)
+- Line 207: `wsSummary` for Summary sheet
+
+---
+
 ## Impact
 
-1. **Data Integrity:** Fix #1, #3, and #4 ensure data is written correctly and completely
+1. **Data Integrity:** Fix #1, #3, #4, and #5 ensure data is written correctly and completely
 2. **Performance:** Fix #2 can reduce execution time from minutes to seconds for large datasets
 3. **Reliability:** All fixes improve the overall reliability and correctness of the script
 4. **Output Completeness:** Fix #4 ensures that all three rows (Posted, Reversed, Balance) are properly displayed for each Profit Center, matching the expected output format
+5. **Multi-Sheet Support:** Fix #5 ensures that multiple GL account sheets are created correctly instead of overwriting data into a single sheet
 
 ## Testing Recommendations
 
@@ -142,6 +180,8 @@ Move the Type label assignment outside the `If pcRowPosted = 0` block to ensure 
 2. Test with worksheets containing large amounts of data (1000+ rows)
 3. Verify Summary sheet output contains complete GL Account information for all row types
 4. Verify GL sheets are created correctly with proper Profit Center blocks
+5. **Test with multiple GL accounts to ensure separate sheets are created for each GL account**
+6. **Verify that data is not overwritten or combined into a single sheet when multiple GL accounts exist**
 
 ## Notes
 
