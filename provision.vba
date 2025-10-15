@@ -225,8 +225,13 @@ NextRow:
     wsSummary.Cells(1, 2).Value = "Profit Center"
     wsSummary.Cells(1, 3).Value = "Type"
     
+    ' Sort months chronologically for Summary sheet
+    Dim sortedMonths As Variant
+    sortedMonths = dictMonthsGlobal.Keys
+    QuickSortMonths sortedMonths, LBound(sortedMonths), UBound(sortedMonths)
+    
     colNum = 4
-    For Each month In dictMonthsGlobal.Keys
+    For Each month In sortedMonths
         wsSummary.Cells(1, colNum).Value = month
         colNum = colNum + 1
     Next month
@@ -252,9 +257,9 @@ NextRow:
         wsSummary.Cells(rowBalance, 2).Value = tmpPC
         wsSummary.Cells(rowBalance, 3).Value = "Balance"
         
-        ' Fill in the month data
+        ' Fill in the month data using sorted months
         colNum = 4
-        For Each month In dictMonthsGlobal.Keys
+        For Each month In sortedMonths
             If dictData(key).exists(month) Then
                 If dictData(key)(month) > 0 Then
                     wsSummary.Cells(rowPosted, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + dictData(key)(month)
