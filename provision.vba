@@ -313,7 +313,8 @@ NextRow:
                 glReversedCol = dictGLColumns(glAccount)("Reversed")
                 glBalanceCol = dictGLColumns(glAccount)("Balance")
                 
-                ' Write values to source GL sheet columns (hyperlinks removed)
+                ' Write values to Summary sheet (hyperlinks removed)
+                ' glAccount parameter is the GL sheet name, kept for potential future formula reference use
                 If totalPostedVal <> 0 Then
                     AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, glAccount, totalPostedVal
                 End If
@@ -394,8 +395,9 @@ End Function
 ' --- Helper to set cell values without hyperlinks ---
 Sub AddCellReferenceFormula(ws As Worksheet, cellRow As Long, cellCol As Long, sheetName As String, displayValue As Variant)
     ' This function sets simple cell values without hyperlinks
-    ' The sheetName parameter is kept for API compatibility but not currently used
-    ' Users can manually adjust cells to add formula references like =SheetName!B1 as needed
+    ' The sheetName parameter (which receives the GL Account/Sheet name) is kept for API compatibility
+    ' It could be used in the future if formula references like =SheetName!B1 are desired
+    ' For now, it's unused - users can manually adjust cells to add formula references as needed
     On Error Resume Next
     ' Remove any existing hyperlink from this specific cell only
     ws.Cells(cellRow, cellCol).Hyperlinks.Delete
