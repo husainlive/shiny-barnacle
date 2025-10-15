@@ -69,6 +69,7 @@ Public Sub BuildProvisionReports()
     Dim tmpPostingKey As String, tmpAmount As Double
     Dim tmpDocDate As Date, tmpMonthKey As String
     Dim newGLDesc As String
+    Dim newRow As Long
     
     For r = 2 To lastRow
         If Not IsDate(wsData.Cells(r, hDocDate).Value) Then GoTo NextRow
@@ -98,7 +99,6 @@ Public Sub BuildProvisionReports()
             newGLDesc = InputBox("Enter description for new GL Code: " & GLCode, "New GL Code")
             If newGLDesc = "" Then newGLDesc = GLCode
             dictGL(GLCode) = newGLDesc
-            Dim newRow As Long
             newRow = wsMapping.Cells(wsMapping.Rows.Count, 1).End(xlUp).Row + 1
             wsMapping.Cells(newRow, 1).Value = GLCode
             wsMapping.Cells(newRow, 2).Value = newGLDesc
@@ -131,6 +131,10 @@ NextRow:
     Dim monthsDict As Object
     Dim monthList As Variant
     Dim m As Variant
+    Dim foundRow As Long
+    Dim lastUsedRow As Long
+    Dim totalPosted As Double, totalReversed As Double
+    Dim totalColNum As Long
     
     For Each key In dictData.Keys
         parts = Split(key, "|")
@@ -151,8 +155,6 @@ NextRow:
         
         ' Find or add Profit Center 3-row block
         pcRowPosted = 0
-        Dim foundRow As Long
-        Dim lastUsedRow As Long
         lastUsedRow = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row
         If lastUsedRow < 1 Then lastUsedRow = 1
         For foundRow = 2 To lastUsedRow
@@ -200,7 +202,6 @@ NextRow:
         Set monthsDict = dictSheetMonths(tmpGLDesc)
         
         ' Fill Posted/Reversed/Balance and track totals
-        Dim totalPosted As Double, totalReversed As Double
         totalPosted = 0
         totalReversed = 0
         
@@ -217,7 +218,6 @@ NextRow:
         Next month
         
         ' Fill Total column
-        Dim totalColNum As Long
         totalColNum = monthsDict("Total")
         wsGL.Cells(pcRowPosted, totalColNum).Value = Nz(wsGL.Cells(pcRowPosted, totalColNum).Value) + totalPosted
         wsGL.Cells(pcRowReversed, totalColNum).Value = Nz(wsGL.Cells(pcRowReversed, totalColNum).Value) + totalReversed
@@ -261,6 +261,7 @@ NextRow:
     wsSummary.Cells(1, 1).Value = "Profit Center"
     colNum = 2
     Dim glAccount As Variant
+    Dim glAcct As Variant
     Dim dictGLColumns As Object
     Set dictGLColumns = CreateObject("Scripting.Dictionary")
     
@@ -288,13 +289,14 @@ NextRow:
     Dim profitCenter As Variant
     Dim glPostedCol As Long, glReversedCol As Long, glBalanceCol As Long
     Dim totalPostedVal As Double, totalReversedVal As Double
+    Dim balanceVal As Double
     
     For Each profitCenter In pcArray
         wsSummary.Cells(summaryRow, 1).Value = profitCenter
         
         ' For each GL Account, calculate aggregated Posted, Reversed, Balance
-        For Each glAccount In glArray
-            key = glAccount & "|" & profitCenter
+        For Each glAcct In glArray
+            key = glAcct & "|" & profitCenter
             
             If dictData.exists(key) Then
                 totalPostedVal = 0
@@ -309,28 +311,27 @@ NextRow:
                     End If
                 Next month
                 
-                glPostedCol = dictGLColumns(glAccount)("Posted")
-                glReversedCol = dictGLColumns(glAccount)("Reversed")
-                glBalanceCol = dictGLColumns(glAccount)("Balance")
+                glPostedCol = dictGLColumns(glAcct)("Posted")
+                glReversedCol = dictGLColumns(glAcct)("Reversed")
+                glBalanceCol = dictGLColumns(glAcct)("Balance")
                 
                 ' Write values to Summary sheet (hyperlinks removed)
-                ' glAccount parameter is the GL sheet name, kept for potential future formula reference use
+                ' glAcct parameter is the GL sheet name, kept for potential future formula reference use
                 If totalPostedVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, glAccount, totalPostedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, glAcct, totalPostedVal
                 End If
                 
                 If totalReversedVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, glAccount, totalReversedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, glAcct, totalReversedVal
                 End If
                 
                 ' Balance = Posted + Reversed
-                Dim balanceVal As Double
                 balanceVal = totalPostedVal + totalReversedVal
                 If balanceVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, glAccount, balanceVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, glAcct, balanceVal
                 End If
             End If
-        Next glAccount
+        Next glAcct
         
         summaryRow = summaryRow + 1
     Next profitCenter
