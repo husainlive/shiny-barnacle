@@ -111,11 +111,18 @@ Public Sub BuildProvisionReports()
             Set dictData(key) = CreateObject("Scripting.Dictionary")
         End If
         
-        ' Sum amounts per month
-        If dictData(key).exists(tmpMonthKey) Then
-            dictData(key)(tmpMonthKey) = dictData(key)(tmpMonthKey) + tmpAmount
+        ' Track Posted and Reversed amounts separately per month
+        If Not dictData(key).exists(tmpMonthKey) Then
+            Set dictData(key)(tmpMonthKey) = CreateObject("Scripting.Dictionary")
+            dictData(key)(tmpMonthKey)("Posted") = 0
+            dictData(key)(tmpMonthKey)("Reversed") = 0
+        End If
+        
+        ' Add to Posted or Reversed based on sign
+        If tmpAmount > 0 Then
+            dictData(key)(tmpMonthKey)("Posted") = dictData(key)(tmpMonthKey)("Posted") + tmpAmount
         Else
-            dictData(key)(tmpMonthKey) = tmpAmount
+            dictData(key)(tmpMonthKey)("Reversed") = dictData(key)(tmpMonthKey)("Reversed") + tmpAmount
         End If
         
 NextRow:
@@ -207,13 +214,23 @@ NextRow:
         
         For Each month In dictData(key).Keys
             colNum = monthsDict(month)
-            If dictData(key)(month) > 0 Then
-                wsGL.Cells(pcRowPosted, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + dictData(key)(month)
-                totalPosted = totalPosted + dictData(key)(month)
-            Else
-                wsGL.Cells(pcRowReversed, colNum).Value = Nz(wsGL.Cells(pcRowReversed, colNum).Value) + dictData(key)(month)
-                totalReversed = totalReversed + dictData(key)(month)
+            Dim postedAmt As Double, reversedAmt As Double
+            postedAmt = dictData(key)(month)("Posted")
+            reversedAmt = dictData(key)(month)("Reversed")
+            
+            ' Always write Posted value if non-zero
+            If postedAmt <> 0 Then
+                wsGL.Cells(pcRowPosted, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + postedAmt
             End If
+            totalPosted = totalPosted + postedAmt
+            
+            ' Always write Reversed value if non-zero
+            If reversedAmt <> 0 Then
+                wsGL.Cells(pcRowReversed, colNum).Value = Nz(wsGL.Cells(pcRowReversed, colNum).Value) + reversedAmt
+            End If
+            totalReversed = totalReversed + reversedAmt
+            
+            ' Calculate Balance
             wsGL.Cells(pcRowBalance, colNum).Value = Nz(wsGL.Cells(pcRowPosted, colNum).Value) + Nz(wsGL.Cells(pcRowReversed, colNum).Value)
         Next month
         
@@ -304,11 +321,8 @@ NextRow:
                 
                 ' Sum all months for this GL+PC combination
                 For Each month In dictData(key).Keys
-                    If dictData(key)(month) > 0 Then
-                        totalPostedVal = totalPostedVal + dictData(key)(month)
-                    Else
-                        totalReversedVal = totalReversedVal + dictData(key)(month)
-                    End If
+                    totalPostedVal = totalPostedVal + dictData(key)(month)("Posted")
+                    totalReversedVal = totalReversedVal + dictData(key)(month)("Reversed")
                 Next month
                 
                 glPostedCol = dictGLColumns(glAcct)("Posted")
