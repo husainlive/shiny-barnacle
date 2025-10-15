@@ -18,6 +18,7 @@ Public Sub BuildProvisionReports()
     
     ' --- GL Mapping in Personal.xlsb ---
     On Error Resume Next
+    Set wsMapping = Nothing
     Set wsMapping = ThisWorkbook.Sheets("GL_Mapping")
     If wsMapping Is Nothing Then
         MsgBox "GL_Mapping sheet not found in Personal.xlsb.", vbCritical
@@ -138,6 +139,7 @@ NextRow:
         
         ' Create or activate GL sheet
         On Error Resume Next
+        Set wsGL = Nothing
         Set wsGL = wb.Sheets(tmpGLDesc)
         If wsGL Is Nothing Then
             Set wsGL = wb.Sheets.Add
@@ -203,6 +205,7 @@ NextRow:
     ' --- Build Summary Sheet ---
     Dim wsSummary As Worksheet
     On Error Resume Next
+    Set wsSummary = Nothing
     Set wsSummary = wb.Sheets("Summary")
     If wsSummary Is Nothing Then
         Set wsSummary = wb.Sheets.Add
