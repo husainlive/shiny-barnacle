@@ -166,6 +166,10 @@ NextRow:
             If pcRowPosted < 2 Then pcRowPosted = 2
             wsGL.Cells(pcRowPosted, 1).Value = tmpPC
         End If
+        ' Always ensure the Profit Center value is set for all 3 rows
+        wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+        wsGL.Cells(pcRowPosted + 1, 1).Value = tmpPC
+        wsGL.Cells(pcRowPosted + 2, 1).Value = tmpPC
         ' Always ensure the Type labels are set for all 3 rows
         wsGL.Cells(pcRowPosted, 2).Value = "Posted"
         wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"

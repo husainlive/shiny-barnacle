@@ -166,13 +166,68 @@ This fix was applied to three locations:
 
 ---
 
+### 6. **Missing Profit Center Values in Reversed and Balance Rows (Lines 169-172)**
+
+**Problem:**
+```vba
+If pcRowPosted = 0 Then
+    pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
+    If pcRowPosted < 2 Then pcRowPosted = 2
+    wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+End If
+' Always ensure the Type labels are set for all 3 rows
+wsGL.Cells(pcRowPosted, 2).Value = "Posted"
+wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"
+wsGL.Cells(pcRowPosted + 2, 2).Value = "Balance"
+```
+
+The code only sets the Profit Center value (column A) for the Posted row when creating a new Profit Center block. The Reversed and Balance rows (pcRowPosted + 1 and pcRowPosted + 2) do not have the Profit Center value set in column A, resulting in output where these rows appear with blank Profit Center cells. This creates a format like:
+
+```
+Profit Center  Type      Aug-24  Sep-25
+10120007       Posted    1000    1000
+               Reversed  -500    -500
+               Balance   500     500
+```
+
+Instead of the expected format:
+
+```
+Profit Center  Type      Aug-24  Sep-25
+10120007       Posted    1000    1000
+10120007       Reversed  -500    -500
+10120007       Balance   500     500
+```
+
+**Fix:**
+```vba
+If pcRowPosted = 0 Then
+    pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
+    If pcRowPosted < 2 Then pcRowPosted = 2
+    wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+End If
+' Always ensure the Profit Center value is set for all 3 rows
+wsGL.Cells(pcRowPosted, 1).Value = tmpPC
+wsGL.Cells(pcRowPosted + 1, 1).Value = tmpPC
+wsGL.Cells(pcRowPosted + 2, 1).Value = tmpPC
+' Always ensure the Type labels are set for all 3 rows
+wsGL.Cells(pcRowPosted, 2).Value = "Posted"
+wsGL.Cells(pcRowPosted + 1, 2).Value = "Reversed"
+wsGL.Cells(pcRowPosted + 2, 2).Value = "Balance"
+```
+
+Set the Profit Center value in column A for all three rows (Posted, Reversed, Balance), not just the Posted row. This ensures that all three rows display the Profit Center value, making the output consistent and properly formatted.
+
+---
+
 ## Impact
 
-1. **Data Integrity:** Fix #1, #3, #4, and #5 ensure data is written correctly and completely
+1. **Data Integrity:** Fix #1, #3, #4, #5, and #6 ensure data is written correctly and completely
 2. **Performance:** Fix #2 can reduce execution time from minutes to seconds for large datasets
 3. **Reliability:** All fixes improve the overall reliability and correctness of the script
 4. **Output Completeness:** Fix #4 ensures that all three rows (Posted, Reversed, Balance) are properly displayed for each Profit Center, matching the expected output format
 5. **Multi-Sheet Support:** Fix #5 ensures that multiple GL account sheets are created correctly instead of overwriting data into a single sheet
+6. **Data Consistency:** Fix #6 ensures that all three rows (Posted, Reversed, Balance) display the Profit Center value in column A, preventing blank cells and maintaining proper data structure
 
 ## Testing Recommendations
 
