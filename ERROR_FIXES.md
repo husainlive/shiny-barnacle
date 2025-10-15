@@ -129,7 +129,7 @@ Move the Type label assignment outside the `If pcRowPosted = 0` block to ensure 
 
 ---
 
-### 5. **Worksheet Object Not Reset Before Access with Error Handling (Lines 21, 141, 206)**
+### 5. **Worksheet Object Not Reset Before Access with Error Handling (Lines 21, 142, 208)**
 
 **Problem:**
 ```vba
@@ -162,7 +162,7 @@ Explicitly set the worksheet object to `Nothing` before attempting to access it.
 This fix was applied to three locations:
 - Line 21: `wsMapping` for GL_Mapping sheet
 - Line 142: `wsGL` for individual GL account sheets (main bug fix)
-- Line 207: `wsSummary` for Summary sheet
+- Line 208: `wsSummary` for Summary sheet
 
 ---
 

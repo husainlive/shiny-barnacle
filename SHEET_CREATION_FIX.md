@@ -85,7 +85,7 @@ By adding `Set wsGL = Nothing` before accessing the sheet, we ensure that:
 ## Files Modified
 1. **provision.vba** (line 142): Added `Set wsGL = Nothing` for GL account sheet creation
 2. **provision.vba** (line 21): Added `Set wsMapping = Nothing` for GL_Mapping sheet access (preventive fix)
-3. **provision.vba** (line 207): Added `Set wsSummary = Nothing` for Summary sheet access (preventive fix)
+3. **provision.vba** (line 208): Added `Set wsSummary = Nothing` for Summary sheet access (preventive fix)
 4. **ERROR_FIXES.md**: Added documentation as Fix #5
 5. **SHEET_CREATION_FIX.md**: Created this detailed documentation
 
