@@ -164,6 +164,8 @@ NextRow:
         If pcRowPosted = 0 Then
             pcRowPosted = wsGL.Cells(wsGL.Rows.Count, 1).End(xlUp).Row + 1
             If pcRowPosted < 2 Then pcRowPosted = 2
+            ' Add blank row before new profit center (except for the first one)
+            If pcRowPosted > 2 Then pcRowPosted = pcRowPosted + 1
             wsGL.Cells(pcRowPosted, 1).Value = tmpPC
         End If
         ' Always ensure the Profit Center value is set for all 3 rows
@@ -230,22 +232,42 @@ NextRow:
     Next month
     
     Dim rowOut As Long: rowOut = 2
+    Dim rowPosted As Long, rowReversed As Long, rowBalance As Long
     For Each key In dictData.Keys
         parts = Split(key, "|")
         tmpGLDesc = parts(0)
         tmpPC = parts(1)
         
-        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowOut, 2).Value = tmpPC
-        wsSummary.Cells(rowOut, 3).Value = "Posted"
-        rowOut = rowOut + 1
-        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowOut, 2).Value = tmpPC
-        wsSummary.Cells(rowOut, 3).Value = "Reversed"
-        rowOut = rowOut + 1
-        wsSummary.Cells(rowOut, 1).Value = tmpGLDesc
-        wsSummary.Cells(rowOut, 2).Value = tmpPC
-        wsSummary.Cells(rowOut, 3).Value = "Balance"
+        rowPosted = rowOut
+        rowReversed = rowOut + 1
+        rowBalance = rowOut + 2
+        
+        wsSummary.Cells(rowPosted, 1).Value = tmpGLDesc
+        wsSummary.Cells(rowPosted, 2).Value = tmpPC
+        wsSummary.Cells(rowPosted, 3).Value = "Posted"
+        wsSummary.Cells(rowReversed, 1).Value = tmpGLDesc
+        wsSummary.Cells(rowReversed, 2).Value = tmpPC
+        wsSummary.Cells(rowReversed, 3).Value = "Reversed"
+        wsSummary.Cells(rowBalance, 1).Value = tmpGLDesc
+        wsSummary.Cells(rowBalance, 2).Value = tmpPC
+        wsSummary.Cells(rowBalance, 3).Value = "Balance"
+        
+        ' Fill in the month data
+        colNum = 4
+        For Each month In dictMonthsGlobal.Keys
+            If dictData(key).exists(month) Then
+                If dictData(key)(month) > 0 Then
+                    wsSummary.Cells(rowPosted, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + dictData(key)(month)
+                Else
+                    wsSummary.Cells(rowReversed, colNum).Value = Nz(wsSummary.Cells(rowReversed, colNum).Value) + dictData(key)(month)
+                End If
+                wsSummary.Cells(rowBalance, colNum).Value = Nz(wsSummary.Cells(rowPosted, colNum).Value) + Nz(wsSummary.Cells(rowReversed, colNum).Value)
+            End If
+            colNum = colNum + 1
+        Next month
+        
+        rowOut = rowOut + 3
+        ' Add blank row after each profit center group
         rowOut = rowOut + 1
     Next key
     
