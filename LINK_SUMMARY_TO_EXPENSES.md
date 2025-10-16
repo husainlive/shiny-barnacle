@@ -20,12 +20,13 @@ The Summary sheet now contains Excel formulas that reference the "Total" column 
 
 **Example:**
 ```
-Summary Sheet Cell B2: ='Provisions'!E2  (formula linking to GL sheet)
+Summary Sheet Cell B2: ='Provisions'!F2  (formula linking to GL sheet)
 ```
 
 Where:
 - `Provisions` is the GL Account sheet name
-- `E2` is the cell in the Total column for the Posted row of a specific Profit Center
+- `F2` is the cell in the Total column for the Posted row of a specific Profit Center
+- The actual column letter (F, G, H, etc.) depends on the number of month columns in the GL sheet
 
 ## Benefits
 
@@ -170,19 +171,21 @@ Given a GL sheet structure like this:
 
 **Provisions Sheet:**
 ```
-A           B        C      D      E
-Profit Ctr  Type     08-24  12-24  Total
-10120008    Posted   1000   70000  71000
-10120008    Reversed 0      -5000  -5000
-10120008    Balance  1000   65000  66000
+A           B        C      D      E      F
+Profit Ctr  Type     08-24  12-24  01-25  Total
+10120008    Posted   1000   70000  0      71000
+10120008    Reversed 0      -5000  0      -5000
+10120008    Balance  1000   65000  0      66000
 ```
 
 The Summary sheet will contain formulas like:
 ```
-Summary!B2: ='Provisions'!E2   (references Posted Total: 71000)
-Summary!C2: ='Provisions'!E3   (references Reversed Total: -5000)
-Summary!D2: ='Provisions'!E4   (references Balance Total: 66000)
+Summary!B2: ='Provisions'!F2   (references Posted Total: 71000)
+Summary!C2: ='Provisions'!F3   (references Reversed Total: -5000)
+Summary!D2: ='Provisions'!F4   (references Balance Total: 66000)
 ```
+
+**Note:** Column F is the Total column in this example because there are 3 month columns (C, D, E) plus header columns A and B. The actual column letter will vary based on the number of months in your data.
 
 ## Files Modified
 

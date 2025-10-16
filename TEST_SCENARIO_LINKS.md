@@ -20,7 +20,10 @@ Document Date | Profit Center | Profit Center: Short Text | Posting Key | Compan
 ```
 GL Code | Description
 400100  | Provisions
+400200  | Equipment (optional - for testing multiple GL accounts)
 ```
+
+**Note:** The basic test uses only one GL account (Provisions). For more comprehensive testing of multiple GL accounts, add transactions with GL code 400200 to verify formulas reference the correct sheet.
 
 ## Expected Output
 
@@ -142,8 +145,10 @@ This tests the ColumnNumberToLetter function accuracy:
 | 53            | BA             | ='Sheet'!BA1    |
 
 Based on the test data, the Total column should be:
-- If there are 3 months + header + Total = column F (6th column)
-- Check that formulas reference column F, not column 6
+- Column structure: A (Profit Ctr) | B (Type) | C (08-24) | D (12-24) | E (01-25) | F (Total)
+- Total column = F (6th column)
+- Formulas should reference column F (e.g., `='Provisions'!F2`)
+- **Note:** The actual column letter will vary based on how many months are present in your data
 
 ### 9. Edge Cases
 
