@@ -133,6 +133,10 @@ NextRow:
     Dim dictSheetMonths As Object
     Set dictSheetMonths = CreateObject("Scripting.Dictionary")
     
+    ' Track cell references for each GL+PC combination
+    Dim dictCellRefs As Object
+    Set dictCellRefs = CreateObject("Scripting.Dictionary")
+    
     Dim parts() As String
     Dim month As Variant, colNum As Long
     Dim monthsDict As Object
@@ -239,6 +243,16 @@ NextRow:
         wsGL.Cells(pcRowPosted, totalColNum).Value = Nz(wsGL.Cells(pcRowPosted, totalColNum).Value) + totalPosted
         wsGL.Cells(pcRowReversed, totalColNum).Value = Nz(wsGL.Cells(pcRowReversed, totalColNum).Value) + totalReversed
         wsGL.Cells(pcRowBalance, totalColNum).Value = Nz(wsGL.Cells(pcRowPosted, totalColNum).Value) + Nz(wsGL.Cells(pcRowReversed, totalColNum).Value)
+        
+        ' Store cell references for Summary sheet linking
+        If Not dictCellRefs.exists(key) Then
+            Set dictCellRefs(key) = CreateObject("Scripting.Dictionary")
+        End If
+        dictCellRefs(key)("SheetName") = tmpGLDesc
+        dictCellRefs(key)("PostedRow") = pcRowPosted
+        dictCellRefs(key)("ReversedRow") = pcRowReversed
+        dictCellRefs(key)("BalanceRow") = pcRowBalance
+        dictCellRefs(key)("TotalCol") = totalColNum
     Next key
     
     ' --- Build Summary Sheet ---
@@ -329,20 +343,23 @@ NextRow:
                 glReversedCol = dictGLColumns(glAcct)("Reversed")
                 glBalanceCol = dictGLColumns(glAcct)("Balance")
                 
-                ' Write values to Summary sheet (hyperlinks removed)
-                ' glAcct parameter is the GL sheet name, kept for potential future formula reference use
+                ' Get cell references for linking
+                Dim cellRefs As Object
+                Set cellRefs = dictCellRefs(key)
+                
+                ' Write values to Summary sheet with formulas linking to GL sheets
                 If totalPostedVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, CStr(glAcct), totalPostedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glPostedCol, cellRefs("SheetName"), cellRefs("PostedRow"), cellRefs("TotalCol")
                 End If
                 
                 If totalReversedVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, glAcct, totalReversedVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glReversedCol, cellRefs("SheetName"), cellRefs("ReversedRow"), cellRefs("TotalCol")
                 End If
                 
                 ' Balance = Posted + Reversed
                 balanceVal = totalPostedVal + totalReversedVal
                 If balanceVal <> 0 Then
-                    AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, glAcct, balanceVal
+                    AddCellReferenceFormula wsSummary, summaryRow, glBalanceCol, cellRefs("SheetName"), cellRefs("BalanceRow"), cellRefs("TotalCol")
                 End If
             End If
         Next glAcct
@@ -407,12 +424,38 @@ Function Nz(val As Variant) As Double
     End If
 End Function
 
-' --- Helper to set cell values without hyperlinks ---
+' --- Helper to set cell formulas linking to GL sheets ---
 Sub AddCellReferenceFormula(ws As Worksheet, cellRow As Long, cellCol As Long, _
-                            ByVal sheetName As Variant, displayValue As Variant)
+                            sheetName As String, sourceRow As Long, sourceCol As Long)
     On Error Resume Next
     ws.Cells(cellRow, cellCol).Hyperlinks.Delete
-    ws.Cells(cellRow, cellCol).Value = displayValue
+    
+    ' Create formula reference to GL sheet cell
+    ' Convert column number to letter for formula
+    Dim colLetter As String
+    colLetter = ColumnNumberToLetter(sourceCol)
+    
+    ' Build formula: ='SheetName'!A1
+    Dim formula As String
+    formula = "='" & sheetName & "'!" & colLetter & sourceRow
+    
+    ws.Cells(cellRow, cellCol).Formula = formula
     On Error GoTo 0
 End Sub
+
+' --- Helper to convert column number to letter ---
+Function ColumnNumberToLetter(colNum As Long) As String
+    Dim temp As Long
+    Dim letter As String
+    
+    temp = colNum
+    Do While temp > 0
+        Dim modulo As Long
+        modulo = (temp - 1) Mod 26
+        letter = Chr(65 + modulo) & letter
+        temp = (temp - modulo) \ 26
+    Loop
+    
+    ColumnNumberToLetter = letter
+End Function
 
